@@ -17,10 +17,14 @@ public class ShoppingCart {
         id = System.currentTimeMillis();
     }
 
-    public void add(String isbn) throws InvalidQuantityException, InexistentItemException {
+    public void add(String isbn) {
         if (exists(isbn)) {
             Integer oldQuantity = this.items.get(isbn);
-            updateQuantity(isbn, oldQuantity + 1);
+            try {
+                updateQuantity(isbn, oldQuantity + 1);
+            } catch (InvalidQuantityException | InexistentItemException e) {
+                System.out.println("Will never execute this line.");
+            }
         } else {
             this.items.put(isbn, 1);
         }
@@ -49,7 +53,7 @@ public class ShoppingCart {
 
     private boolean exists(String isbn) {
         return this.items.containsKey(isbn) ? true : false;
-
+        //or
         //return this.items.containsKey(isbn);
     }
 

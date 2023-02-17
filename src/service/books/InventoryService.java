@@ -2,8 +2,8 @@ package service.books;
 
 import exceptions.BookAlreadyExistsException;
 import exceptions.InexistentBookException;
-import exceptions.InsufficientStockException;
 import exceptions.InvalidPriceException;
+import exceptions.InvalidQuantityException;
 import model.Book;
 
 public interface InventoryService {
@@ -18,13 +18,10 @@ public interface InventoryService {
 
     Book searchByIsbn(String isbn) throws InexistentBookException;
 
-    void updateStock(String title, int quantity) throws InexistentBookException, InsufficientStockException;
+    void updateStock(String title, int quantity) throws InexistentBookException, InvalidQuantityException;
 
     void updatePrice(String title, double price) throws InexistentBookException, InvalidPriceException;
 
     void displayAll();
-
-
-    //display all
 
 }

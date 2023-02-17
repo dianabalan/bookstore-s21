@@ -6,10 +6,11 @@ import exceptions.InexistentItemException;
 import exceptions.InsufficientStockException;
 import exceptions.InvalidPriceException;
 import exceptions.InvalidQuantityException;
+import model.Book;
 import service.BookStore;
+import service.books.DbInventoryService;
 import service.books.InventoryService;
-import service.books.MyInventoryService;
-import service.shopping_cart.MyShoppingCartsService;
+import service.shopping_cart.DbShoppingCartsService;
 import service.shopping_cart.ShoppingCartsService;
 
 import java.util.Map;
@@ -18,29 +19,44 @@ import java.util.Scanner;
 public class Application {
 
     public static void main(String[] args) {
-        BookStore bookStore = new BookStore(new MyInventoryService(), new MyShoppingCartsService());
+
+
+        BookStore bookStore = new BookStore(new DbInventoryService(), new DbShoppingCartsService());
         Scanner scanner = new Scanner(System.in);
 
         do {
             try {
-                System.out.println("Admin(1) or client(2)?");
+                System.out.println("***********MAIN MENU***********");
+                System.out.println("0. Exit");
+                System.out.println("1. Admin");
+                System.out.println("2. Client");
+                System.out.println("******************************");
                 int option = Integer.parseInt(scanner.nextLine());
-                //homework - optimize menu: if user selects admin option, it should display
-                //the admin menu and process the admin option until admin chooses 0
-                //same for client
 
-                if (option == 1) {
-                    //admin menu
-                    displayAdminMenu();
-                    processAdminOption(scanner, bookStore.getInventoryService());
+                switch (option) {
+                    case 0:
+                        System.exit(0);
+                    case 1:
+                        boolean backToMainMenu;
+                        //admin menu
+                        do {
+                            displayAdminMenu();
+                            backToMainMenu = processAdminOption(scanner, bookStore.getInventoryService());
+                        } while (!backToMainMenu);
+                        break;
 
-                } else {
-                    //client menu
-                    System.out.println("What is your client id?");
-                    String clientId = scanner.nextLine();
+                    case 2:
+                        //client menu
+                        System.out.println("What is your client id?");
+                        String clientId = scanner.nextLine();
 
-                    displayClientMenu();
-                    processClientOption(scanner, clientId, bookStore.getInventoryService(), bookStore.getShoppingCartsService());
+                        do {
+                            displayClientMenu();
+                            backToMainMenu = processClientOption(scanner, clientId, bookStore.getInventoryService(), bookStore.getShoppingCartsService());
+                        } while (!backToMainMenu);
+                        break;
+                    default:
+                        System.out.println("Invalid option. Choose 0-2");
                 }
 
             } catch (NumberFormatException e) {
@@ -52,22 +68,25 @@ public class Application {
 
     }
 
-    private static void processClientOption(Scanner scanner, String clientId, InventoryService inventoryService, ShoppingCartsService shoppingCartsService) {
+    private static boolean processClientOption(Scanner scanner, String clientId, InventoryService inventoryService, ShoppingCartsService shoppingCartsService) {
         System.out.println("Input choice: ");
         int option = Integer.parseInt(scanner.nextLine());
 
         try {
             switch (option) {
                 case 0:
-                    System.exit(0);
+                    return true;
                 case 1:
                     //add to cart
                     System.out.println("Input isbn: ");
                     String isbn = scanner.nextLine();
 
-                    inventoryService.searchByIsbn(isbn);
+                    Book book = inventoryService.searchByIsbn(isbn);
 
-                    //homework - add validation:check if there is enough stock
+                    int quantity = shoppingCartsService.getQuantity(clientId, isbn);
+
+                    book.checkStock(quantity == 0 ? -1 : -(quantity + 1));
+
                     shoppingCartsService.addToCart(clientId, isbn);
 
                     System.out.println("Added to cart successfully!");
@@ -92,9 +111,11 @@ public class Application {
                     isbn = scanner.nextLine();
 
                     System.out.println("Input quantity: ");
-                    int quantity = Integer.parseInt(scanner.nextLine());
+                    quantity = Integer.parseInt(scanner.nextLine());
 
-                    //homework - add validation: check if there is enough stock
+                    book = inventoryService.searchByIsbn(isbn);
+                    book.checkStock(quantity == 0 ? -1 : -(quantity + 1));
+
                     shoppingCartsService.updateQuantity(clientId, isbn, quantity);
 
                     System.out.println("Successfully updated quantity!");
@@ -102,6 +123,7 @@ public class Application {
                 case 4:
                     //display shopping cart items
                     displayAllItemsInShoppingCart(clientId, inventoryService, shoppingCartsService);
+                    //TODO - homework - check if this works
                     break;
                 case 5:
                     //display all books in inventory
@@ -115,18 +137,21 @@ public class Application {
                     break;
             }
 
-        } catch (InexistentBookException | InvalidQuantityException | InexistentItemException e) {
+        } catch (InexistentBookException | InvalidQuantityException | InexistentItemException |
+                 InsufficientStockException e) {
             System.out.println(e.getMessage());
         }
+
+        return false;
     }
 
     private static void displayAllItemsInShoppingCart(String clientId, InventoryService inventoryService, ShoppingCartsService shoppingCartsService) throws InexistentBookException {
-        for (Map.Entry<String, Integer> entry : shoppingCartsService.getShoppingCart(clientId).getItems().entrySet()) {
+        for (Map.Entry<String, Integer> entry : shoppingCartsService.getShoppingCartItems(clientId).entrySet()) {
             System.out.println(inventoryService.searchByIsbn(entry.getKey()) + ", quantity in cart: " + entry.getValue());
         }
     }
 
-    private static void processAdminOption(Scanner scanner, InventoryService inventoryService) {
+    private static boolean processAdminOption(Scanner scanner, InventoryService inventoryService) {
 
         String isbn;
         String title;
@@ -139,7 +164,7 @@ public class Application {
         try {
             switch (option) {
                 case 0:
-                    System.exit(0);
+                    return true;
                 case 1:
                     //add book
                     System.out.println("Input isbn: ");
@@ -172,6 +197,7 @@ public class Application {
                     System.out.println("Book succcessfully deleted!");
                     break;
                 case 3:
+                    //search by title
                     System.out.println("Input title: ");
                     title = scanner.nextLine();
 
@@ -179,6 +205,7 @@ public class Application {
                     //search by title
                     break;
                 case 4:
+                    //search by isbn
                     System.out.println("Input isbn: ");
                     isbn = scanner.nextLine();
 
@@ -217,15 +244,18 @@ public class Application {
 
             }
 
-        } catch (BookAlreadyExistsException | InexistentBookException | InsufficientStockException | InvalidPriceException e) {
+        } catch (BookAlreadyExistsException | InexistentBookException |
+                 InvalidPriceException | InvalidQuantityException e) {
             System.out.println(e.getMessage());
         }
+
+        return false;
     }
 
     private static void displayAdminMenu() {
 
         System.out.println("********ADMIN MENU***********");
-        System.out.println("0. Exit");
+        System.out.println("0. Back to main menu");
         System.out.println("1. Add book");
         System.out.println("2. Remove book");
         System.out.println("3. Search by title");
@@ -239,7 +269,7 @@ public class Application {
 
     private static void displayClientMenu() {
         System.out.println("********CLIENT MENU***********");
-        System.out.println("0. Exit");
+        System.out.println("0. Back to main menu");
         System.out.println("1. Add to cart");
         System.out.println("2. Remove to cart");
         System.out.println("3. Update quantity");

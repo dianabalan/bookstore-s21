@@ -38,7 +38,7 @@ public class Book {
 
     public void updateStock(int quantity) throws InsufficientStockException {
         checkStock(quantity);
-        this.stock += quantity;
+        this.stock = quantity;
 
     }
 
