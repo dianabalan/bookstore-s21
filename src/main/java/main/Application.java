@@ -10,7 +10,9 @@ import model.Book;
 import service.BookStore;
 import service.books.DbInventoryService;
 import service.books.InventoryService;
+import service.books.MyInventoryService;
 import service.shopping_cart.DbShoppingCartsService;
+import service.shopping_cart.MyShoppingCartsService;
 import service.shopping_cart.ShoppingCartsService;
 
 import java.util.Map;
@@ -20,8 +22,23 @@ public class Application {
 
     public static void main(String[] args) {
 
+        String storageType = args[0];
+        BookStore bookStore = null;
+        switch (storageType) {
+            case "persistent":
+                System.out.println("Initializing persistent storage application");
+                bookStore = new BookStore(new DbInventoryService(), new DbShoppingCartsService());
+                break;
+            case "non-persistent":
+                System.out.println("Initializing non-persistent storage application");
+                bookStore = new BookStore(new MyInventoryService(), new MyShoppingCartsService());
+                break;
+            default:
+                System.out.println("Invalid program argument!!");
+                System.exit(0);
+        }
 
-        BookStore bookStore = new BookStore(new DbInventoryService(), new DbShoppingCartsService());
+
         Scanner scanner = new Scanner(System.in);
 
         do {

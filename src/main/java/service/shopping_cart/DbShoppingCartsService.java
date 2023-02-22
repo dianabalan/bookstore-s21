@@ -22,8 +22,10 @@ public class DbShoppingCartsService implements ShoppingCartsService {
     @Override
     public void addToCart(String clientId, String isbn) {
         //check if item already exists in cart
+
         PreparedStatement selectStatement;
         try {
+            this.connection.setAutoCommit(false);
             selectStatement = this.connection.prepareStatement("SELECT * FROM shopping_carts sc JOIN shopping_cart_items sci ON sc.id=sci.id_shopping_cart WHERE sc.client_id=? AND sci.isbn_book=?");
             selectStatement.setString(1, clientId);
             selectStatement.setString(2, isbn);
@@ -56,6 +58,7 @@ public class DbShoppingCartsService implements ShoppingCartsService {
                 insertSCIStatement.setInt(3, 1);
 
                 insertSCIStatement.executeUpdate();
+
                 insertSCIStatement.close();
                 selectStatement.close();
 
@@ -73,8 +76,20 @@ public class DbShoppingCartsService implements ShoppingCartsService {
             }
             selectStatement.close();
 
+            this.connection.commit();
         } catch (SQLException e) {
             System.out.println("db error: " + e.getMessage());
+            try {
+                this.connection.rollback();
+            } catch (SQLException ex) {
+                throw new RuntimeException(ex);
+            }
+        } finally {
+            try {
+                this.connection.setAutoCommit(true);
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
         }
 
     }

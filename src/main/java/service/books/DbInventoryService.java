@@ -172,9 +172,22 @@ public class DbInventoryService implements InventoryService {
 
     @Override
     public void displayAll() {
-        //TODO - homework
-        //select pe books
-        //sout - toate cartile
-        //hint - extractBookInfo, Book#toString
+        try {
+            PreparedStatement statement = connection.prepareStatement("SELECT * FROM books ORDER BY title");
+            ResultSet resultSet = statement.executeQuery();
+
+            boolean empty = true;
+            while (resultSet.next()) {
+                empty = false;
+                System.out.println(extractBookInfo(resultSet));
+            }
+            statement.close();
+            if (empty) {
+                System.out.println("No books in db!");
+            }
+
+        } catch (SQLException e) {
+            System.out.println("DB ERROR: " + e.getMessage());
+        }
     }
 }
