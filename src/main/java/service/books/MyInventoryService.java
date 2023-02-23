@@ -1,25 +1,52 @@
 package service.books;
 
+import com.opencsv.bean.CsvToBeanBuilder;
 import exceptions.BookAlreadyExistsException;
 import exceptions.InexistentBookException;
 import exceptions.InsufficientStockException;
 import exceptions.InvalidPriceException;
 import model.Book;
+import model.CoverType;
 
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
 public class MyInventoryService implements InventoryService {
 
+    //title,book
     private Map<String, Book> books = new TreeMap<>();
 
+    public MyInventoryService() {
+        //populate books with values from csv
+
+        try {
+            List<Book> csvBooks = new CsvToBeanBuilder(new FileReader("src/main/resources/books.csv"))
+                    .withType(Book.class)
+                    .withSeparator(';')
+                    .build()
+                    .parse();
+
+            for (Book book : csvBooks){
+                this.books.put(book.getTitle(), book);
+            }
+
+        } catch (FileNotFoundException e) {
+            System.out.println("File books.csv not found!");
+            System.exit(0);
+        }
+    }
+
     @Override
-    public void add(String isbn, String title, String authors, double price, int stock) throws BookAlreadyExistsException {
+    public void add(String isbn, String title, String authors, double price, int stock, LocalDate publishDate, CoverType coverType) throws BookAlreadyExistsException {
 
         if (exists(title)) {
             throw new BookAlreadyExistsException(String.format("Book with title %s already exists", title));
         } else {
-            Book book = new Book(isbn, title, price, stock);
+            Book book = new Book(isbn, title, price, stock, publishDate, coverType);
             book.addAuthors(authors);
 
             this.books.put(title, book);

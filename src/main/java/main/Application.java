@@ -7,14 +7,18 @@ import exceptions.InsufficientStockException;
 import exceptions.InvalidPriceException;
 import exceptions.InvalidQuantityException;
 import model.Book;
+import model.CoverType;
 import service.BookStore;
 import service.books.DbInventoryService;
 import service.books.InventoryService;
 import service.books.MyInventoryService;
+import service.reports.ReportsService;
 import service.shopping_cart.DbShoppingCartsService;
 import service.shopping_cart.MyShoppingCartsService;
 import service.shopping_cart.ShoppingCartsService;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.Scanner;
 
@@ -26,8 +30,11 @@ public class Application {
         BookStore bookStore = null;
         switch (storageType) {
             case "persistent":
+                String url = args[1];
+                String user = args[2];
+                String pass = args[3];
                 System.out.println("Initializing persistent storage application");
-                bookStore = new BookStore(new DbInventoryService(), new DbShoppingCartsService());
+                bookStore = new BookStore(new DbInventoryService(url, user, pass), new DbShoppingCartsService(url, user, pass), new ReportsService(url, user, pass));
                 break;
             case "non-persistent":
                 System.out.println("Initializing non-persistent storage application");
@@ -58,7 +65,7 @@ public class Application {
                         //admin menu
                         do {
                             displayAdminMenu();
-                            backToMainMenu = processAdminOption(scanner, bookStore.getInventoryService());
+                            backToMainMenu = processAdminOption(scanner, bookStore.getInventoryService(), bookStore.getReportsService());
                         } while (!backToMainMenu);
                         break;
 
@@ -168,7 +175,7 @@ public class Application {
         }
     }
 
-    private static boolean processAdminOption(Scanner scanner, InventoryService inventoryService) {
+    private static boolean processAdminOption(Scanner scanner, InventoryService inventoryService, ReportsService reportsService) {
 
         String isbn;
         String title;
@@ -199,7 +206,15 @@ public class Application {
                     System.out.println("Input stock: ");
                     quantity = Integer.parseInt(scanner.nextLine());
 
-                    inventoryService.add(isbn, title, authors, price, quantity);
+                    System.out.println("Input publish date (dd-MM-yyyy)");
+                    String dateStr = scanner.nextLine();
+                    LocalDate publishDate = LocalDate.parse(dateStr, DateTimeFormatter.ofPattern("dd-MM-yyyy"));
+
+                    System.out.println("Input cover type (PAPERBACK/HARD_COVER)");
+                    //call safevalueof
+                    CoverType coverType = CoverType.valueOf(scanner.nextLine());
+
+                    inventoryService.add(isbn, title, authors, price, quantity, publishDate, coverType);
 
                     System.out.println("Book successfully added!");
 
@@ -256,6 +271,11 @@ public class Application {
                     //display all
                     inventoryService.displayAll();
                     break;
+                case 8:
+                    System.out.println("Input file name for report.");
+                    String fileName = scanner.nextLine();
+                    reportsService.generateAlphabeticalReport(fileName);
+                    break;
                 default:
                     System.out.println("Invalid option. Values 0-7");
 
@@ -280,6 +300,7 @@ public class Application {
         System.out.println("5. Update quantity");
         System.out.println("6. Update price");
         System.out.println("7. Display all");
+        System.out.println("8. Generate alphabetical by title report");
         System.out.println("*****************************");
     }
 

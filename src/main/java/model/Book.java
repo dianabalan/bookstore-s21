@@ -1,34 +1,50 @@
 package model;
 
+import com.opencsv.bean.CsvBindAndSplitByName;
+import com.opencsv.bean.CsvBindByName;
 import exceptions.InsufficientStockException;
 import exceptions.InvalidPriceException;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 public class Book {
 
+    @CsvBindByName
     private String isbn;
+
+    @CsvBindByName
     private String title;
+
+    @CsvBindAndSplitByName(elementType = String.class, splitOn = ",")
     private List<String> authors;
+
+    @CsvBindByName
     private double price;
+
+    @CsvBindByName
     private int stock;
 
-    public Book(String isbn, String title, List<String> authors, double price, int stock) {
-        this.isbn = isbn;
-        this.title = title;
-        this.authors = authors;
-        this.price = price;
-        this.stock = stock;
+    private LocalDate publishDate;
+
+    private CoverType coverType;
+
+    public Book() {
+
     }
 
-    public Book(String isbn, String title, double price, int stock) {
+
+    public Book(String isbn, String title, double price, int stock, LocalDate publishDate, CoverType coverType) {
         this.isbn = isbn;
         this.title = title;
         this.price = price;
         this.stock = stock;
         this.authors = new ArrayList<>();
+        this.publishDate = publishDate;
+        this.coverType = coverType;
+
     }
 
     //comma separated author names
@@ -48,6 +64,7 @@ public class Book {
         }
     }
 
+    //homework - display date with custom formatter dd-MM-yyyy
     @Override
     public String toString() {
         return "Book{" +
@@ -56,6 +73,8 @@ public class Book {
                 ", authors=" + authors +
                 ", price=" + price +
                 ", stock=" + stock +
+                ", publishDate=" + publishDate +
+                ", coverType=" + coverType +
                 '}';
     }
 

@@ -15,8 +15,8 @@ public class DbShoppingCartsService implements ShoppingCartsService {
 
     private final Connection connection;
 
-    public DbShoppingCartsService() {
-        this.connection = DbConnection.getConnection();
+    public DbShoppingCartsService(String url, String username, String password) {
+        this.connection = DbConnection.getConnection(url, username, password);
     }
 
     @Override

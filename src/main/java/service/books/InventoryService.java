@@ -5,10 +5,13 @@ import exceptions.InexistentBookException;
 import exceptions.InvalidPriceException;
 import exceptions.InvalidQuantityException;
 import model.Book;
+import model.CoverType;
+
+import java.time.LocalDate;
 
 public interface InventoryService {
 
-    void add(String isbn, String title, String authors, double price, int stock) throws BookAlreadyExistsException;
+    void add(String isbn, String title, String authors, double price, int stock, LocalDate publishDate, CoverType coverType) throws BookAlreadyExistsException;
 
     void add(Book book) throws BookAlreadyExistsException;
 

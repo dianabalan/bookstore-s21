@@ -6,19 +6,22 @@ import exceptions.InexistentBookException;
 import exceptions.InvalidPriceException;
 import exceptions.InvalidQuantityException;
 import model.Book;
+import model.CoverType;
 
 import java.sql.Connection;
+import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDate;
 
 public class DbInventoryService implements InventoryService {
 
     //made this field final, because we don't need to modify it
     private final Connection connection;
 
-    public DbInventoryService() {
-        this.connection = DbConnection.getConnection();
+    public DbInventoryService(String url, String username, String password) {
+        this.connection = DbConnection.getConnection(url, username, password);
     }
 
     private static Book extractBookInfo(ResultSet resultSet) throws SQLException {
@@ -28,13 +31,18 @@ public class DbInventoryService implements InventoryService {
         int stock = resultSet.getInt("stock");
         double price = resultSet.getDouble("price");
 
-        Book book = new Book(dbIsbn, dbTitle, price, stock);
+        Date publishDate = resultSet.getDate("publish_date");
+        String coverTypeStr = resultSet.getString("cover_type");
+
+        //homework - safevalueof
+
+        Book book = new Book(dbIsbn, dbTitle, price, stock, publishDate.toLocalDate(), CoverType.valueOf(coverTypeStr));
         book.addAuthors(authors);
         return book;
     }
 
     @Override
-    public void add(String isbn, String title, String authors, double price, int stock) throws BookAlreadyExistsException {
+    public void add(String isbn, String title, String authors, double price, int stock, LocalDate publishDate, CoverType coverType) throws BookAlreadyExistsException {
         PreparedStatement insertStatement;
         PreparedStatement selectStmt;
         try {
@@ -46,12 +54,14 @@ public class DbInventoryService implements InventoryService {
             if (resultSet.next()) {
                 throw new BookAlreadyExistsException(String.format("Book with isbn %s already exists!", isbn));
             } else {
-                insertStatement = this.connection.prepareStatement("INSERT INTO books(isbn, stock, price, authors, title) VALUES (?,?,?,?,?)");
+                insertStatement = this.connection.prepareStatement("INSERT INTO books(isbn, stock, price, authors, title, publish_date, cover_type) VALUES (?,?,?,?,?,?,?)");
                 insertStatement.setString(1, isbn);
                 insertStatement.setInt(2, stock);
                 insertStatement.setDouble(3, price);
                 insertStatement.setString(4, authors);
                 insertStatement.setString(5, title);
+                insertStatement.setDate(6, Date.valueOf(publishDate));
+                insertStatement.setString(7, coverType.name());
 
                 insertStatement.executeUpdate();
                 insertStatement.close();
