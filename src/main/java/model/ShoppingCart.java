@@ -2,6 +2,7 @@ package model;
 
 import exceptions.InexistentItemException;
 import exceptions.InvalidQuantityException;
+import lombok.Getter;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -11,6 +12,7 @@ public class ShoppingCart {
     private long id;
 
     //key = isbn, value= quantity
+    @Getter
     private Map<String, Integer> items = new LinkedHashMap<>();
 
     public ShoppingCart() {
@@ -57,7 +59,4 @@ public class ShoppingCart {
         //return this.items.containsKey(isbn);
     }
 
-    public Map<String, Integer> getItems() {
-        return items;
-    }
 }

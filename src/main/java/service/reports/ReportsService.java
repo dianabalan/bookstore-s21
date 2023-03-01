@@ -15,10 +15,10 @@ import java.sql.Statement;
 
 public class ReportsService {
 
-    private final Connection connection;
+    private Connection connection;
 
-    public ReportsService(String url, String username, String password) {
-        this.connection = DbConnection.getConnection(url, username, password);
+    public ReportsService() {
+        this.connection = DbConnection.INSTANCE.getConnection();
     }
 
     public void generateAlphabeticalReport(String fileName) {
@@ -26,7 +26,7 @@ public class ReportsService {
             Statement selectStmt = this.connection.createStatement();
             ResultSet resultSet = selectStmt.executeQuery("SELECT * FROM books ORDER BY title ASC");
 
-            Writer writer = new FileWriter("src/main/resources/"+fileName);
+            Writer writer = new FileWriter("src/main/resources/" + fileName);
             ICSVWriter csvWriter = new CSVWriterBuilder(writer)
                     .withQuoteChar(CSVWriter.NO_QUOTE_CHARACTER)
                     .withSeparator(';')

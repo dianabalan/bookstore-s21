@@ -14,14 +14,17 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
+import java.util.Optional;
 
 public class DbInventoryService implements InventoryService {
 
     //made this field final, because we don't need to modify it
-    private final Connection connection;
+    private Connection connection;
 
-    public DbInventoryService(String url, String username, String password) {
-        this.connection = DbConnection.getConnection(url, username, password);
+    public DbInventoryService() {
+
+        this.connection = DbConnection.INSTANCE.getConnection();
+
     }
 
     private static Book extractBookInfo(ResultSet resultSet) throws SQLException {
@@ -106,7 +109,7 @@ public class DbInventoryService implements InventoryService {
     }
 
     @Override
-    public Book searchByTitle(String title) throws InexistentBookException {
+    public Optional<Book> searchByTitle(String title) {
         PreparedStatement selectStmt;
         try {
 
@@ -115,13 +118,13 @@ public class DbInventoryService implements InventoryService {
 
             ResultSet resultSet = selectStmt.executeQuery();
             if (!resultSet.next()) {
-                throw new InexistentBookException(String.format("Book with title %s does not exist!", title));
+                return Optional.empty();
+
             } else {
                 Book book = extractBookInfo(resultSet);
-
                 selectStmt.close();
 
-                return book;
+                return Optional.of(book);
 
             }
         } catch (SQLException e) {

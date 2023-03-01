@@ -20,6 +20,7 @@ import service.shopping_cart.ShoppingCartsService;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Scanner;
 
 public class Application {
@@ -27,14 +28,13 @@ public class Application {
     public static void main(String[] args) {
 
         String storageType = args[0];
+
         BookStore bookStore = null;
         switch (storageType) {
             case "persistent":
-                String url = args[1];
-                String user = args[2];
-                String pass = args[3];
+
                 System.out.println("Initializing persistent storage application");
-                bookStore = new BookStore(new DbInventoryService(url, user, pass), new DbShoppingCartsService(url, user, pass), new ReportsService(url, user, pass));
+                bookStore = new BookStore(new DbInventoryService(), new DbShoppingCartsService(), new ReportsService());
                 break;
             case "non-persistent":
                 System.out.println("Initializing non-persistent storage application");
@@ -233,7 +233,14 @@ public class Application {
                     System.out.println("Input title: ");
                     title = scanner.nextLine();
 
-                    System.out.println("Found: " + inventoryService.searchByTitle(title));
+                    Optional<Book> optionalBook = inventoryService.searchByTitle(title);
+
+                    if (optionalBook.isPresent()) {
+                        System.out.println("Found: " + optionalBook.get());
+                    } else {
+                        System.out.println(String.format("No book with title %s found", title));
+                    }
+
                     //search by title
                     break;
                 case 4:

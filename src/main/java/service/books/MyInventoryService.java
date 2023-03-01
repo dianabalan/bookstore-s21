@@ -13,6 +13,7 @@ import java.io.FileReader;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.TreeMap;
 
 public class MyInventoryService implements InventoryService {
@@ -69,15 +70,8 @@ public class MyInventoryService implements InventoryService {
     }
 
     @Override
-    public Book searchByTitle(String title) throws InexistentBookException {
-        Book book = this.books.get(title);
-
-        if (book == null) {
-            throw new InexistentBookException(String.format("Book with title %s does not exist.", title));
-        }
-
-        return book;
-
+    public Optional<Book> searchByTitle(String title){
+        return Optional.ofNullable(this.books.get(title));
     }
 
     @Override

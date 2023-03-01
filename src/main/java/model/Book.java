@@ -4,6 +4,7 @@ import com.opencsv.bean.CsvBindAndSplitByName;
 import com.opencsv.bean.CsvBindByName;
 import exceptions.InsufficientStockException;
 import exceptions.InvalidPriceException;
+import lombok.Getter;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -12,9 +13,11 @@ import java.util.List;
 
 public class Book {
 
+    @Getter
     @CsvBindByName
     private String isbn;
 
+    @Getter
     @CsvBindByName
     private String title;
 
@@ -34,6 +37,8 @@ public class Book {
     public Book() {
 
     }
+
+
 
 
     public Book(String isbn, String title, double price, int stock, LocalDate publishDate, CoverType coverType) {
@@ -78,13 +83,6 @@ public class Book {
                 '}';
     }
 
-    public String getTitle() {
-        return title;
-    }
-
-    public String getIsbn() {
-        return isbn;
-    }
 
     public void updatePrice(double price) throws InvalidPriceException {
         if (price < 0) {

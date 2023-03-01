@@ -8,6 +8,7 @@ import model.Book;
 import model.CoverType;
 
 import java.time.LocalDate;
+import java.util.Optional;
 
 public interface InventoryService {
 
@@ -17,7 +18,7 @@ public interface InventoryService {
 
     void delete(String title) throws InexistentBookException;
 
-    Book searchByTitle(String title) throws InexistentBookException;
+    Optional<Book> searchByTitle(String title);
 
     Book searchByIsbn(String isbn) throws InexistentBookException;
 

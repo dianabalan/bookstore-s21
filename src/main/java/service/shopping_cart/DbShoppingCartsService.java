@@ -13,10 +13,12 @@ import java.util.Map;
 
 public class DbShoppingCartsService implements ShoppingCartsService {
 
-    private final Connection connection;
+    private Connection connection;
 
-    public DbShoppingCartsService(String url, String username, String password) {
-        this.connection = DbConnection.getConnection(url, username, password);
+    public DbShoppingCartsService() {
+
+        this.connection = DbConnection.INSTANCE.getConnection();
+
     }
 
     @Override
@@ -114,10 +116,10 @@ public class DbShoppingCartsService implements ShoppingCartsService {
 
         try {
             PreparedStatement statement = this.connection.prepareStatement("SELECT sci.isbn_book, sci.quantity FROM shopping_cart_items sci JOIN shopping_carts sc ON sc.id=sci.id_shopping_cart WHERE sc.client_id=?");
-            statement.setString(1,clientId);
+            statement.setString(1, clientId);
             ResultSet resultSet = statement.executeQuery();
 
-            while(resultSet.next()){
+            while (resultSet.next()) {
                 resultMap.put(resultSet.getString("isbn_book"), resultSet.getInt("quantity"));
             }
         } catch (SQLException e) {
