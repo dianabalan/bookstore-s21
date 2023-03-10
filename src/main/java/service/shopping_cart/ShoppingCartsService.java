@@ -1,20 +1,21 @@
 package service.shopping_cart;
 
+import entities.Book;
+import entities.Customer;
 import exceptions.InexistentItemException;
 import exceptions.InvalidQuantityException;
 
-import java.util.Map;
 
 public interface ShoppingCartsService {
 
-    void addToCart(String clientId, String isbn);
+    void addToCart(Customer customer, Book book);
 
-    void removeFromCart(String clientId, String isbn) throws InexistentItemException;
+    void removeFromCart(Customer customer, Book book) throws InexistentItemException;
 
-    void updateQuantity(String clientId, String isbn, int quantit8y) throws InvalidQuantityException, InexistentItemException;
+    void updateQuantity(Customer customer, Book book, int quantity) throws InvalidQuantityException, InexistentItemException;
 
-    //isbn, quantity
-    Map<String, Integer> getShoppingCartItems(String clientId);
+    int getQuantity(Customer customer, Book book);
 
-    int getQuantity(String clientId, String isbn);
+    //display all items in shopping cart - OPEN
+    void displayAll(Customer customer);
 }

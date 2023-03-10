@@ -1,50 +1,42 @@
 package main;
 
+import entities.Author;
+import entities.Book;
+import entities.Customer;
 import exceptions.BookAlreadyExistsException;
 import exceptions.InexistentBookException;
 import exceptions.InexistentItemException;
 import exceptions.InsufficientStockException;
-import exceptions.InvalidPriceException;
 import exceptions.InvalidQuantityException;
-import model.Book;
 import model.CoverType;
 import service.BookStore;
-import service.books.DbInventoryService;
+import service.authors.AuthorsService;
+import service.authors.HibernateAuthorsService;
+import service.books.HibernateInventoryService;
 import service.books.InventoryService;
-import service.books.MyInventoryService;
+import service.customers.HibernateCustomersService;
 import service.reports.ReportsService;
-import service.shopping_cart.DbShoppingCartsService;
-import service.shopping_cart.MyShoppingCartsService;
+import service.shopping_cart.HibernateShoppingCartsService;
 import service.shopping_cart.ShoppingCartsService;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.Map;
+import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.Scanner;
+import java.util.Set;
 
 public class Application {
 
     public static void main(String[] args) {
 
-        String storageType = args[0];
 
-        BookStore bookStore = null;
-        switch (storageType) {
-            case "persistent":
-
-                System.out.println("Initializing persistent storage application");
-                bookStore = new BookStore(new DbInventoryService(), new DbShoppingCartsService(), new ReportsService());
-                break;
-            case "non-persistent":
-                System.out.println("Initializing non-persistent storage application");
-                bookStore = new BookStore(new MyInventoryService(), new MyShoppingCartsService());
-                break;
-            default:
-                System.out.println("Invalid program argument!!");
-                System.exit(0);
-        }
-
+        BookStore bookStore = new BookStore(new HibernateInventoryService(), new HibernateShoppingCartsService(),
+                new HibernateAuthorsService(), new HibernateCustomersService(), new ReportsService());
 
         Scanner scanner = new Scanner(System.in);
 
@@ -65,19 +57,26 @@ public class Application {
                         //admin menu
                         do {
                             displayAdminMenu();
-                            backToMainMenu = processAdminOption(scanner, bookStore.getInventoryService(), bookStore.getReportsService());
+                            backToMainMenu = processAdminOption(scanner, bookStore.getInventoryService(), bookStore.getReportsService(), bookStore.getAuthorsService());
                         } while (!backToMainMenu);
                         break;
 
                     case 2:
                         //client menu
-                        System.out.println("What is your client id?");
-                        String clientId = scanner.nextLine();
+                        System.out.println("What is your customer email?");
+                        String email = scanner.nextLine();
 
-                        do {
-                            displayClientMenu();
-                            backToMainMenu = processClientOption(scanner, clientId, bookStore.getInventoryService(), bookStore.getShoppingCartsService());
-                        } while (!backToMainMenu);
+                        Optional<Customer> optionalCustomer = bookStore.getCustomersService().get(email);
+
+                        if (!optionalCustomer.isPresent()) {
+                            System.out.println("Customer does not exist!!");
+                        } else {
+
+                            do {
+                                displayClientMenu();
+                                backToMainMenu = processClientOption(scanner, optionalCustomer.get(), bookStore.getInventoryService(), bookStore.getShoppingCartsService());
+                            } while (!backToMainMenu);
+                        }
                         break;
                     default:
                         System.out.println("Invalid option. Choose 0-2");
@@ -92,8 +91,11 @@ public class Application {
 
     }
 
-    private static boolean processClientOption(Scanner scanner, String clientId, InventoryService inventoryService, ShoppingCartsService shoppingCartsService) {
-        System.out.println("Input choice: ");
+    private static boolean processClientOption(Scanner scanner, Customer customer, InventoryService bookInventory, ShoppingCartsService shoppingCartsService) {
+        String title;
+        String isbn;
+
+        System.out.println("Input option: ");
         int option = Integer.parseInt(scanner.nextLine());
 
         try {
@@ -101,198 +103,233 @@ public class Application {
                 case 0:
                     return true;
                 case 1:
-                    //add to cart
+                    //add to shopping cart
                     System.out.println("Input isbn: ");
-                    String isbn = scanner.nextLine();
+                    isbn = scanner.nextLine();
+                    //this throws exception if does not exist
+                    Book book = bookInventory.searchByIsbn(isbn);
+                    //see if item exists in cart and get its quantity
+                    int quantity = shoppingCartsService.getQuantity(customer, book);
+                    //check if there is enough stock
+                    book.checkStock(quantity != 0 ? -(quantity + 1) : -1);
 
-                    Book book = inventoryService.searchByIsbn(isbn);
+                    //add to cart
+                    shoppingCartsService.addToCart(customer, book);
 
-                    int quantity = shoppingCartsService.getQuantity(clientId, isbn);
+                    System.out.println("Item successfully added!");
 
-                    book.checkStock(quantity == 0 ? -1 : -(quantity + 1));
-
-                    shoppingCartsService.addToCart(clientId, isbn);
-
-                    System.out.println("Added to cart successfully!");
                     break;
                 case 2:
-                    //remove from cart
-                    System.out.println("Which item? ");
-                    displayAllItemsInShoppingCart(clientId, inventoryService, shoppingCartsService);
-
-                    System.out.println("Input isbn: ");
+                    //remove item
+                    System.out.println("Which item?");
+                    System.out.println("Input isbn for book you wish to delete from cart.");
                     isbn = scanner.nextLine();
 
-                    shoppingCartsService.removeFromCart(clientId, isbn);
-                    System.out.println("Successfully removed!");
+                    book = bookInventory.searchByIsbn(isbn);
+                    shoppingCartsService.removeFromCart(customer, book);
+
+                    System.out.println("Item successfully removed!");
+
                     break;
+
                 case 3:
                     //update quantity
-                    System.out.println("Which item? ");
-                    displayAllItemsInShoppingCart(clientId, inventoryService, shoppingCartsService);
+                    System.out.println("Which item?");
+                    shoppingCartsService.displayAll(customer);
 
-                    System.out.println("Input isbn: ");
+                    System.out.println("Input isbn for book you wish to delete from cart.");
                     isbn = scanner.nextLine();
 
-                    System.out.println("Input quantity: ");
+                    System.out.println("Input new quantity");
                     quantity = Integer.parseInt(scanner.nextLine());
 
-                    book = inventoryService.searchByIsbn(isbn);
-                    book.checkStock(quantity == 0 ? -1 : -(quantity + 1));
+                    //check if we have enough stock
+                    book = bookInventory.searchByIsbn(isbn);
+                    book.checkStock(-quantity);
 
-                    shoppingCartsService.updateQuantity(clientId, isbn, quantity);
-
-                    System.out.println("Successfully updated quantity!");
+                    shoppingCartsService.updateQuantity(customer, book, quantity);
                     break;
+
                 case 4:
-                    //display shopping cart items
-                    displayAllItemsInShoppingCart(clientId, inventoryService, shoppingCartsService);
-                    //TODO - homework - check if this works
+                    //search by title
+                    System.out.println("Input title: ");
+                    title = scanner.nextLine();
+
+                    System.out.println(bookInventory.searchByTitle(title));
                     break;
                 case 5:
-                    //display all books in inventory
-                    inventoryService.displayAll();
+                    //display all
+                    bookInventory.displayAll();
                     break;
                 case 6:
-                    //search book by title
-                    System.out.println("Input title: ");
-                    String title = scanner.nextLine();
-                    System.out.println(inventoryService.searchByTitle(title));
+                    //display items in shopping cart
+                    shoppingCartsService.displayAll(customer);
                     break;
+
             }
 
-        } catch (InexistentBookException | InvalidQuantityException | InexistentItemException |
-                 InsufficientStockException e) {
-            System.out.println(e.getMessage());
+        } catch (InexistentBookException | InexistentItemException e) {
+            System.out.println("Warning: " + e.getMessage());
+            System.out.println("Choose from: ");
+
+        } catch (InsufficientStockException | InvalidQuantityException e) {
+            System.out.println("Warning: " + e.getMessage());
         }
 
         return false;
     }
 
-    private static void displayAllItemsInShoppingCart(String clientId, InventoryService inventoryService, ShoppingCartsService shoppingCartsService) throws InexistentBookException {
-        for (Map.Entry<String, Integer> entry : shoppingCartsService.getShoppingCartItems(clientId).entrySet()) {
-            System.out.println(inventoryService.searchByIsbn(entry.getKey()) + ", quantity in cart: " + entry.getValue());
-        }
-    }
 
-    private static boolean processAdminOption(Scanner scanner, InventoryService inventoryService, ReportsService reportsService) {
-
-        String isbn;
+    private static boolean processAdminOption(Scanner scanner, InventoryService bookInventory, ReportsService reportsService, AuthorsService authorsService) {
         String title;
+        int stock;
         double price;
-        int quantity;
-
-        System.out.println("Input choice: ");
-        int option = Integer.parseInt(scanner.nextLine());
-
         try {
+            System.out.println("Input option: ");
+            int option = Integer.parseInt(scanner.nextLine());
+
             switch (option) {
                 case 0:
                     return true;
                 case 1:
                     //add book
-                    System.out.println("Input isbn: ");
-                    isbn = scanner.nextLine();
+                    System.out.println("Input isbn:");
+                    String isbn = scanner.nextLine();
 
                     System.out.println("Input title: ");
                     title = scanner.nextLine();
 
-                    System.out.println("Input author names, separated by comma (,):");
-                    String authors = scanner.nextLine();
+                    System.out.println("Input stock:");
+                    stock = Integer.parseInt(scanner.nextLine());
 
                     System.out.println("Input price: ");
                     price = Double.parseDouble(scanner.nextLine());
 
-                    System.out.println("Input stock: ");
-                    quantity = Integer.parseInt(scanner.nextLine());
-
-                    System.out.println("Input publish date (dd-MM-yyyy)");
+                    System.out.println("Input publishing date (dd-MM-yyyy)");
                     String dateStr = scanner.nextLine();
-                    LocalDate publishDate = LocalDate.parse(dateStr, DateTimeFormatter.ofPattern("dd-MM-yyyy"));
+                    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+                    LocalDate localDate = LocalDate.parse(dateStr, formatter);
 
-                    System.out.println("Input cover type (PAPERBACK/HARD_COVER)");
-                    //call safevalueof
-                    CoverType coverType = CoverType.valueOf(scanner.nextLine());
-
-                    inventoryService.add(isbn, title, authors, price, quantity, publishDate, coverType);
-
-                    System.out.println("Book successfully added!");
-
-                    break;
-                case 2:
-                    //remove book
-                    System.out.println("Input title: ");
-                    title = scanner.nextLine();
-
-                    inventoryService.delete(title);
-
-                    System.out.println("Book succcessfully deleted!");
-                    break;
-                case 3:
-                    //search by title
-                    System.out.println("Input title: ");
-                    title = scanner.nextLine();
-
-                    Optional<Book> optionalBook = inventoryService.searchByTitle(title);
-
-                    if (optionalBook.isPresent()) {
-                        System.out.println("Found: " + optionalBook.get());
+                    System.out.println("Input cover type (PAPERBACK, HARD_COVER): ");
+                    CoverType coverType = CoverType.safeValueOf(scanner.nextLine());
+                    if (coverType == null) {
+                        System.out.println("Invalid value for cover type. ");
                     } else {
-                        System.out.println(String.format("No book with title %s found", title));
+                        Book book = Book.builder()
+                                .isbn(isbn)
+                                .title(title)
+                                .publishDate(localDate)
+                                .price(price)
+                                .stock(stock)
+                                .coverType(coverType)
+                                .build();
+                        bookInventory.add(book);
                     }
 
-                    //search by title
                     break;
-                case 4:
-                    //search by isbn
-                    System.out.println("Input isbn: ");
-                    isbn = scanner.nextLine();
 
-                    System.out.println("Found: " + inventoryService.searchByIsbn(isbn));
-                    //search by isbn
-                    break;
-                case 5:
-                    //update quantity
+                case 2:
+                    //search by title
                     System.out.println("Input title: ");
                     title = scanner.nextLine();
 
-                    System.out.println("Input quantity: ");
-                    quantity = Integer.parseInt(scanner.nextLine());
-
-                    inventoryService.updateStock(title, quantity);
-                    System.out.println("Quantity updated successfully!");
+                    System.out.println("Found: " + bookInventory.searchByTitle(title));
                     break;
-                case 6:
-                    //update price
+                case 3:
+                    //remove by title
+                    System.out.println("Input title: ");
+                    title = scanner.nextLine();
+
+                    Optional<Book> optionalBook = bookInventory.searchByTitle(title);
+
+                    if (!optionalBook.isPresent()) {
+                        throw new InexistentBookException("No book with this title present");
+                    }
+                    bookInventory.delete(optionalBook.get());
+                    break;
+
+                case 4:
+                    System.out.println("Input title: ");
+                    title = scanner.nextLine();
+                    System.out.println("Input new stock: ");
+                    stock = Integer.parseInt(scanner.nextLine());
+
+                    //this also checks if book exists
+                     optionalBook = bookInventory.searchByTitle(title);
+
+                    if (!optionalBook.isPresent()) {
+                        throw new InexistentBookException("No book with this title present");
+                    }
+                    Book book = optionalBook.get();
+                    book.setStock(stock);
+
+                    bookInventory.update(book);
+                    break;
+                case 5:
                     System.out.println("Input title: ");
                     title = scanner.nextLine();
 
                     System.out.println("Input price: ");
                     price = Double.parseDouble(scanner.nextLine());
 
-                    inventoryService.updatePrice(title, price);
+                    optionalBook = bookInventory.searchByTitle(title);
 
-                    System.out.println("Price updated successfully!");
+                    if (!optionalBook.isPresent()) {
+                        throw new InexistentBookException("No book with this title present");
+                    }
+                    book = optionalBook.get();
+                    //book is in detached state
+                    book.setPrice(price);
+
+                    bookInventory.update(book);
                     break;
+                case 6:
                 case 7:
-                    //display all
-                    inventoryService.displayAll();
+                    bookInventory.displayAll();
                     break;
-                case 8:
-                    System.out.println("Input file name for report.");
-                    String fileName = scanner.nextLine();
-                    reportsService.generateAlphabeticalReport(fileName);
+
+                case 10:
+                    //add authors to book
+                    System.out.println("Input book isbn: ");
+                    isbn = scanner.nextLine();
+
+                    book = bookInventory.searchByIsbn(isbn);
+
+                    System.out.println("Input comma separated author ids: ");
+                    List<String> strIds = Arrays.asList(scanner.nextLine().split(","));
+                    List<Integer> intIds = new ArrayList<>();
+                    for (String strId : strIds) {
+                        intIds.add(Integer.parseInt(strId));
+                    }
+
+                    //authors will be in DETACHED state
+                    Set<Author> authors = new LinkedHashSet<>();
+
+                    for (int id : intIds) {
+                        Optional<Author> authorOptional = authorsService.get(id);
+                        if (!authorOptional.isPresent()) {
+                            System.out.println(String.format("Ommit adding author with id %s. This id does not exist.", id));
+                        } else {
+                            authors.add(authorOptional.get());
+
+                        }
+                    }
+
+                    //book is in DETACHED state
+                    book.getAuthors().addAll(authors);
+                    bookInventory.update(book);
+
                     break;
                 default:
-                    System.out.println("Invalid option. Values 0-7");
+                    System.out.println("Invalid option");
 
             }
 
-        } catch (BookAlreadyExistsException | InexistentBookException |
-                 InvalidPriceException | InvalidQuantityException e) {
-            System.out.println(e.getMessage());
+        } catch (BookAlreadyExistsException | InexistentBookException e) {
+            System.out.println("Warning: " + e.getMessage());
+        } catch (DateTimeParseException e) {
+            System.out.println("Invalid date.");
         }
-
         return false;
     }
 
