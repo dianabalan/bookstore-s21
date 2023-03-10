@@ -5,9 +5,7 @@ import entities.Book;
 import entities.Customer;
 import exceptions.BookAlreadyExistsException;
 import exceptions.InexistentBookException;
-import exceptions.InexistentItemException;
 import exceptions.InsufficientStockException;
-import exceptions.InvalidQuantityException;
 import model.CoverType;
 import service.BookStore;
 import service.authors.AuthorsService;
@@ -125,8 +123,8 @@ public class Application {
                     System.out.println("Input isbn for book you wish to delete from cart.");
                     isbn = scanner.nextLine();
 
-                    book = bookInventory.searchByIsbn(isbn);
-                    shoppingCartsService.removeFromCart(customer, book);
+                    //search by isbn
+                    //remove
 
                     System.out.println("Item successfully removed!");
 
@@ -143,11 +141,9 @@ public class Application {
                     System.out.println("Input new quantity");
                     quantity = Integer.parseInt(scanner.nextLine());
 
-                    //check if we have enough stock
-                    book = bookInventory.searchByIsbn(isbn);
-                    book.checkStock(-quantity);
-
-                    shoppingCartsService.updateQuantity(customer, book, quantity);
+                    //search by isbn
+                    //check if there is enough stock
+                    //update
                     break;
 
                 case 4:
@@ -168,11 +164,11 @@ public class Application {
 
             }
 
-        } catch (InexistentBookException | InexistentItemException e) {
+        } catch (InexistentBookException e) {
             System.out.println("Warning: " + e.getMessage());
             System.out.println("Choose from: ");
 
-        } catch (InsufficientStockException | InvalidQuantityException e) {
+        } catch (InsufficientStockException e) {
             System.out.println("Warning: " + e.getMessage());
         }
 
@@ -215,15 +211,8 @@ public class Application {
                     if (coverType == null) {
                         System.out.println("Invalid value for cover type. ");
                     } else {
-                        Book book = Book.builder()
-                                .isbn(isbn)
-                                .title(title)
-                                .publishDate(localDate)
-                                .price(price)
-                                .stock(stock)
-                                .coverType(coverType)
-                                .build();
-                        bookInventory.add(book);
+                        //use builder to build book
+                        //add it
                     }
 
                     break;
@@ -240,12 +229,8 @@ public class Application {
                     System.out.println("Input title: ");
                     title = scanner.nextLine();
 
-                    Optional<Book> optionalBook = bookInventory.searchByTitle(title);
-
-                    if (!optionalBook.isPresent()) {
-                        throw new InexistentBookException("No book with this title present");
-                    }
-                    bookInventory.delete(optionalBook.get());
+                    //search by title
+                    //remove it
                     break;
 
                 case 4:
@@ -255,15 +240,9 @@ public class Application {
                     stock = Integer.parseInt(scanner.nextLine());
 
                     //this also checks if book exists
-                     optionalBook = bookInventory.searchByTitle(title);
-
-                    if (!optionalBook.isPresent()) {
-                        throw new InexistentBookException("No book with this title present");
-                    }
-                    Book book = optionalBook.get();
-                    book.setStock(stock);
-
-                    bookInventory.update(book);
+                    //search by title
+                    //set new stock
+                    //update it
                     break;
                 case 5:
                     System.out.println("Input title: ");
@@ -272,16 +251,9 @@ public class Application {
                     System.out.println("Input price: ");
                     price = Double.parseDouble(scanner.nextLine());
 
-                    optionalBook = bookInventory.searchByTitle(title);
-
-                    if (!optionalBook.isPresent()) {
-                        throw new InexistentBookException("No book with this title present");
-                    }
-                    book = optionalBook.get();
-                    //book is in detached state
-                    book.setPrice(price);
-
-                    bookInventory.update(book);
+                    //search by title
+                    //set new price
+                    //update it
                     break;
                 case 6:
                 case 7:
@@ -293,31 +265,18 @@ public class Application {
                     System.out.println("Input book isbn: ");
                     isbn = scanner.nextLine();
 
-                    book = bookInventory.searchByIsbn(isbn);
+                    //search by title
 
-                    System.out.println("Input comma separated author ids: ");
-                    List<String> strIds = Arrays.asList(scanner.nextLine().split(","));
-                    List<Integer> intIds = new ArrayList<>();
-                    for (String strId : strIds) {
-                        intIds.add(Integer.parseInt(strId));
-                    }
+                    //ask user to input comma separated author ids
 
-                    //authors will be in DETACHED state
-                    Set<Author> authors = new LinkedHashSet<>();
+                    //split the string by comma
 
-                    for (int id : intIds) {
-                        Optional<Author> authorOptional = authorsService.get(id);
-                        if (!authorOptional.isPresent()) {
-                            System.out.println(String.format("Ommit adding author with id %s. This id does not exist.", id));
-                        } else {
-                            authors.add(authorOptional.get());
+                    //iterate over ids and build a new list of authors by calling authorsService.get on each id
 
-                        }
-                    }
+                    //add all authors to author list of the book
 
-                    //book is in DETACHED state
-                    book.getAuthors().addAll(authors);
-                    bookInventory.update(book);
+                    //update the book
+
 
                     break;
                 default:
@@ -325,7 +284,7 @@ public class Application {
 
             }
 
-        } catch (BookAlreadyExistsException | InexistentBookException e) {
+        } catch (InexistentBookException e) {
             System.out.println("Warning: " + e.getMessage());
         } catch (DateTimeParseException e) {
             System.out.println("Invalid date.");
